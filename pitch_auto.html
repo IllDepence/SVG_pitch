@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css?family=Noto+Sans+JP:300,900&amp;subset=japanese" rel="stylesheet">
+<style>
+body, text {
+  font-family: 'Noto Sans JP', sans-serif;
+  font-weight: 300;
+}
+h3 {
+  font-family: 'Noto Sans JP', sans-serif;
+  font-weight: 900;
+}
+table, td {
+  border-collapse:collapse;
+}
+a {
+  color: #007f9a;
+  text-decoration: none;
+}
+  a:hover {
+  color: #006378;
+}
+  a:focus {
+  outline: none;
+}
+* {-webkit-font-smoothing: antialiased;}
+</style>
+<script src="accdb.js"></script>
+</head>
+<body>
+<div style="width: 700px; margin: 0 auto;">
+<h3>SVG auto pitch</h1>
+<table style="width: 393px; margin-bottom: 10px;">
+    <tr>
+        <td>text</td>
+    <tr>
+    <tr>
+        <td><input id="kanji" oninput="draw()"></td>
+    <tr>
+</table>
+
+<div id="container" style="height: 84px;"></div>
+<p>copy SVG: <input id="copypasta"></p>
+<br>
+<p><small>code on <a href="https://github.com/IllDepence/SVG_pitch">GitHub</a></small></p>
+</div>
+<script>
+function circle(x, y, o) {
+    r = '<circle r="5" cx="'+x+'" cy="'+y+'" style="opacity:1;fill:#000;" />';
+    if(o) {
+        r += '<circle r="3.25" cx="'+x+'" cy="'+y+'" style="opacity:1;fill:#fff;" />';
+        }
+    return r
+    }
+function text(x, s) {
+    return '<text x="'+x+'" y="67.5" style="font-size:20px;fill:#000;">'+s+'</text>';
+    }
+function path(x, y, typ) {
+    if(typ == 's') {  // straight
+        delta = '29,0';
+        }
+    else if(typ == 'u') {  // up
+        delta = '29,-25';
+        }
+    else if(typ == 'd') {  // down
+        delta = '29,25';
+        }
+    return '<path d="m '+x+','+y+' '+delta+'" style="fill:none;stroke:#000;stroke-width:1.5;" />';
+    }
+function draw() {
+    kanji = document.getElementById('kanji').value;
+    acc_tup = acc_dict[kanji];
+    if(acc_tup == undefined) {
+        bad_input();
+        return false;
+        }
+    good_input();
+    kana = acc_tup[0];
+    pitch = acc_tup[1];
+    svg_container = document.getElementById('container');
+    copy_container = document.getElementById('copypasta');
+    positions = Math.max(kana.length, pitch.length);
+    svg_width = Math.max(0, ((positions-1) * 29) + 19);
+
+    svg_str = '<svg width="'+svg_width+'px" height="80px" viewBox="0 0 '+svg_width+' 80">';
+    chars = '';
+    for(i=0; i<kana.length; i++) {
+        x_center = 9.5 + (i * 29);
+        chr = kana[i];
+        chars += text(x_center-11, chr);
+        }
+    circles = '';
+    paths = '';
+    for(i=0; i<pitch.length; i++) {
+        x_center = 9.5 + (i * 29);
+        if(['H', 'h', '1', '2'].indexOf(pitch[i]) >= 0) {
+            y_center = 5;
+            }
+        else if(['L', 'l', '0'].indexOf(pitch[i]) >= 0) {
+            y_center = 30;
+            }
+        else {
+            return false;
+            }
+        circles += circle(x_center, y_center, i>=kana.length);
+        if(i>0) {
+            if(prev_center[1] == y_center) { path_typ = 's'; }
+            if(prev_center[1] < y_center) { path_typ = 'd'; }
+            if(prev_center[1] > y_center) { path_typ = 'u'; }
+            paths += path(prev_center[0], prev_center[1], path_typ);
+            }
+        prev_center = [x_center, y_center];
+        }
+    svg_str += chars+paths+circles+'</svg>';
+    svg_container.innerHTML = svg_str;
+    if(kana.length == 0 && pitch.length == 0) {
+        copy_container.value = '';
+        }
+    else {
+        copy_container.value = svg_str;
+        }
+    }
+function good_input() {
+    document.getElementById('kanji').style.color = '#000';
+    }
+function bad_input() {
+    document.getElementById('kanji').style.color = '#e44';
+    document.getElementById('container').innerHTML = '';
+    document.getElementById('copypasta').value = '';
+    }
+draw();
+</script>
+</body>
+</html>
