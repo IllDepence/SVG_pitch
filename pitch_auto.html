@@ -35,16 +35,21 @@ a {
 <table style="width: 393px; margin-bottom: 10px;">
     <tr>
         <td>text</td>
+        <td id="reading_txt">reading</td>
     <tr>
     <tr>
-        <td><input id="kanji" oninput="draw()"></td>
+        <td><input id="kanji" oninput="newinput()"></td>
+        <td id="reading_buttons">
+            <span style="cursor:pointer;" onclick="prev_reading()">◀</span>&emsp;<!--
+         --><span style="cursor:pointer;" onclick="next_reading()">▶</span>
+        </td>
     <tr>
 </table>
 
 <div id="container" style="height: 84px;"></div>
 <p>copy SVG: <input id="copypasta"></p>
 <br>
-<p><small>code on <a href="https://github.com/IllDepence/SVG_pitch">GitHub</a></small></p>
+<p><small>code on <a href="https://github.com/IllDepence/SVG_pitch">GitHub</a> | pitch accent data by <a href="https://www.wadoku.de/">Wadoku</a></small></p>
 </div>
 <script>
 function circle(x, y, o) {
@@ -54,62 +59,90 @@ function circle(x, y, o) {
         }
     return r
     }
-function text(x, s) {
-    return '<text x="'+x+'" y="67.5" style="font-size:20px;fill:#000;">'+s+'</text>';
+function text(x, mora) {
+    if(mora.length == 1) {
+        return '<text x="'+x+'" y="67.5" style="font-size:20px;fill:#000;">'+mora+'</text>';
+        }
+    else {
+        ret = '<text x="'+(x-5)+'" y="67.5" style="font-size:20px;fill:#000;">'+mora[0]+'</text>'
+        ret += '<text x="'+(x+12)+'" y="67.5" style="font-size:14px;fill:#000;">'+mora[1]+'</text>';
+        return ret
+        }
     }
-function path(x, y, typ) {
+function path(x, y, typ, step_width) {
     if(typ == 's') {  // straight
-        delta = '29,0';
+        delta = step_width+',0';
         }
     else if(typ == 'u') {  // up
-        delta = '29,-25';
+        delta = step_width+',-25';
         }
     else if(typ == 'd') {  // down
-        delta = '29,25';
+        delta = step_width+',25';
         }
     return '<path d="m '+x+','+y+' '+delta+'" style="fill:none;stroke:#000;stroke-width:1.5;" />';
     }
+function newinput() {
+    window.reading_choice = -1;
+    draw();
+    }
 function draw() {
     kanji = document.getElementById('kanji').value;
-    acc_tup = acc_dict[kanji];
-    if(acc_tup == undefined) {
+    if(kanji.length < 1) { bad_input(); return; }
+    acc_tups = acc_dict[kanji];
+    if(acc_tups == undefined) {
         bad_input();
         return false;
         }
     good_input();
-    kana = acc_tup[0];
-    pitch = acc_tup[1];
+    window.num_readings = acc_tups.length
+    if(acc_tups.length > 1) { activate_readings(); }
+    else { deactivate_readings(); }
+    if(window.reading_choice && window.reading_choice > -1) {
+        reading_choice = window.reading_choice;
+        }
+    else {
+        reading_choice = 0;
+        }
+    acc_use = acc_tups[reading_choice];
+    kana = acc_use[0];
+    mora = to_mora_array(kana)
+    pitch = acc_use[1];
+    pitch = pitch.replace(/[lh]/g, '')
     svg_container = document.getElementById('container');
     copy_container = document.getElementById('copypasta');
-    positions = Math.max(kana.length, pitch.length);
-    svg_width = Math.max(0, ((positions-1) * 29) + 19);
+    positions = Math.max(mora.length, pitch.length);
+    step_width = 35
+    margin_lr = 16
+    svg_width = Math.max(0, ((positions-1) * step_width) + (margin_lr*2));
 
-    svg_str = '<svg width="'+svg_width+'px" height="80px" viewBox="0 0 '+svg_width+' 80">';
+    svg_str = '<svg width="'+svg_width+'px" height="75px" viewBox="0 0 '+svg_width+' 75">';
     chars = '';
-    for(i=0; i<kana.length; i++) {
-        x_center = 9.5 + (i * 29);
-        chr = kana[i];
-        chars += text(x_center-11, chr);
+    for(i=0; i<mora.length; i++) {
+        x_center = margin_lr + (i * step_width);
+        chars += text(x_center-11, mora[i]);
         }
     circles = '';
     paths = '';
     for(i=0; i<pitch.length; i++) {
-        x_center = 9.5 + (i * 29);
+        x_center = margin_lr + (i * step_width);
         if(['H', 'h', '1', '2'].indexOf(pitch[i]) >= 0) {
             y_center = 5;
+            good_input();
             }
         else if(['L', 'l', '0'].indexOf(pitch[i]) >= 0) {
             y_center = 30;
+            good_input();
             }
         else {
+            bad_input();
             return false;
             }
-        circles += circle(x_center, y_center, i>=kana.length);
+        circles += circle(x_center, y_center, i>=mora.length);
         if(i>0) {
             if(prev_center[1] == y_center) { path_typ = 's'; }
             if(prev_center[1] < y_center) { path_typ = 'd'; }
             if(prev_center[1] > y_center) { path_typ = 'u'; }
-            paths += path(prev_center[0], prev_center[1], path_typ);
+            paths += path(prev_center[0], prev_center[1], path_typ, step_width);
             }
         prev_center = [x_center, y_center];
         }
@@ -129,6 +162,44 @@ function bad_input() {
     document.getElementById('kanji').style.color = '#e44';
     document.getElementById('container').innerHTML = '';
     document.getElementById('copypasta').value = '';
+    deactivate_readings();
+    }
+function activate_readings() {
+    document.getElementById('reading_txt').style.visibility = 'visible';
+    document.getElementById('reading_buttons').style.visibility = 'visible';
+    }
+function deactivate_readings() {
+    document.getElementById('reading_txt').style.visibility = 'hidden';
+    document.getElementById('reading_buttons').style.visibility = 'hidden';
+    }
+function shift_reading(delta) {
+    new_val = (window.reading_choice + delta) % window.num_readings;
+    if(new_val == -1) { new_val = window.num_readings - 1; }
+    window.reading_choice = new_val;
+    draw();
+    }
+function next_reading() {
+    shift_reading(1);
+    }
+function prev_reading() {
+    shift_reading(-1);
+    }
+function to_mora_array(hira) {
+    mora_arr = [];
+    combiners = ['ゃ','ゅ','ょ','ぁ','ぃ','ぅ','ぇ','ぉ',
+                 'ャ','ュ','ョ','ァ','ィ','ゥ','ェ','ォ']
+    for(i=0; i<hira.length; i++) {
+        if(i+1<hira.length && combiners.indexOf(hira[i+1]) > -1) {
+            // add two
+            mora_arr.push(hira[i]+hira[i+1]);
+            i++; // jump
+            }
+        else {
+            // add one
+            mora_arr.push(hira[i]);
+            }
+        }
+    return mora_arr;
     }
 draw();
 </script>

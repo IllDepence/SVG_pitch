@@ -16,4 +16,4 @@ Pitch accent annotations in simple SVG.
 ### Notes
 * uses the font [Noto Sans JP](https://fonts.google.com/specimen/Noto+Sans+JP) (not embedded in SVGs)
 * accent notation style is similar to [大辞林 アクセント解説](https://www.sanseido-publ.co.jp/publ/dicts/daijirin_ac.html)
-* `accdb.js` was generated using `ACCDB_unicode.csv` from [javdejong/nhk-pronunciation](https://github.com/javdejong/nhk-pronunciation/blob/master/ACCDB_unicode.csv)
+* `wadoku_pitchdb.csv` was generated from a [Wadoku XML dump](https://www.wadoku.de/wiki/display/WAD/Downloads+und+Links) (see [anki_add_pitch/wadoku_parse.py](https://github.com/IllDepence/anki_add_pitch/blob/master/wadoku_parse.py) for more details)
